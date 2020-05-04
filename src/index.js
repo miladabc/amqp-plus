@@ -154,6 +154,18 @@ class AmqpPlus extends EventEmitter {
     );
   }
 
+  subscribe(queueName, handler, options) {
+    if (!this._configuredQueues[queueName]) {
+      throw new Error(
+        `Queue "${queueName}" must be configured before subscribing`
+      );
+    }
+
+    return this._confirmChannel.addSetup((channel) => {
+      return channel.consume(queueName, handler, options);
+    });
+  }
+
   async close() {
     await this._confirmChannel.close();
     await this._connection.close();
