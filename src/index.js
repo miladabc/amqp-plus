@@ -132,6 +132,28 @@ class AmqpPlus extends EventEmitter {
     this._confirmChannel.on('close', () => this.emit('channel:close'));
   }
 
+  publish(exchange, routingKey, content, options = {}) {
+    let msg;
+    const defaultOptions = options;
+    defaultOptions.persistent = options.persistent || true;
+
+    if (typeof content === 'string') {
+      msg = Buffer.from(content);
+      defaultOptions.contentType = 'text/plain';
+    }
+    if (typeof content === 'object') {
+      msg = Buffer.from(JSON.stringify(content));
+      defaultOptions.contentType = 'application/json';
+    }
+
+    return this._confirmChannel.publish(
+      exchange,
+      routingKey,
+      msg,
+      defaultOptions
+    );
+  }
+
   async close() {
     await this._confirmChannel.close();
     await this._connection.close();
