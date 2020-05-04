@@ -1,6 +1,6 @@
 {
   "name": "amqp-plus",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "amqplib with better functionality",
   "keywords": [
     "amqp",

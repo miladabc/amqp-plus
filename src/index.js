@@ -158,6 +158,32 @@ class AmqpPlus extends EventEmitter {
     );
   }
 
+  bulkPublish(exchange, routingKeys, contents, options = {}) {
+    if (!Array.isArray(contents)) {
+      throw new Error('Contents must be an array');
+    }
+
+    if (Array.isArray(routingKeys) && contents.length !== routingKeys.length) {
+      throw new Error('Not enough routing keys');
+    }
+
+    let routingKey;
+    if (typeof routingKeys === 'string') {
+      routingKey = routingKeys;
+    }
+
+    return Promise.all(
+      contents.map((content, i) => {
+        return this.publish(
+          exchange,
+          routingKey || routingKeys[i],
+          content,
+          options
+        );
+      })
+    );
+  }
+
   subscribe(queueName, handler, options) {
     if (!this._configuredQueues[queueName]) {
       throw new Error(
