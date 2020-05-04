@@ -141,7 +141,7 @@ class AmqpPlus extends EventEmitter {
   }
 
   publish(exchange, routingKey, content, options = {}) {
-    let msg;
+    let msg = content;
     const defaultOptions = options;
     defaultOptions.persistent = options.persistent || true;
 
@@ -149,7 +149,7 @@ class AmqpPlus extends EventEmitter {
       msg = Buffer.from(content);
       defaultOptions.contentType = 'text/plain';
     }
-    if (typeof content === 'object') {
+    if (content.constructor === Object || content.constructor === Array) {
       msg = Buffer.from(JSON.stringify(content));
       defaultOptions.contentType = 'application/json';
     }
@@ -188,7 +188,7 @@ class AmqpPlus extends EventEmitter {
     );
   }
 
-  subscribe(queueName, handler, options) {
+  subscribe(queueName, consumer, options) {
     if (!this._configuredQueues[queueName]) {
       throw new Error(
         `Queue "${queueName}" must be configured before subscribing`
@@ -196,8 +196,32 @@ class AmqpPlus extends EventEmitter {
     }
 
     return this._confirmChannel.addSetup((channel) => {
-      return channel.consume(queueName, handler, options);
+      return channel.consume(
+        queueName,
+        this._consumeWrapper(consumer),
+        options
+      );
     });
+  }
+
+  _consumeWrapper(consumer) {
+    return (msg) => {
+      const enhancedMessage = msg;
+      enhancedMessage.ack = () => this._confirmChannel.ack(msg);
+      enhancedMessage.nack = () => this._confirmChannel.nack(msg);
+      enhancedMessage.reject = () =>
+        this._confirmChannel.nack(msg, false, false);
+
+      if (msg.properties.contentType === 'application/json') {
+        enhancedMessage.content = JSON.parse(msg.content.toString());
+      }
+
+      if (msg.properties.contentType === 'text/plain') {
+        enhancedMessage.content = msg.content.toString();
+      }
+
+      return consumer(enhancedMessage);
+    };
   }
 
   async close() {
