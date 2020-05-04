@@ -131,6 +131,11 @@ class AmqpPlus extends EventEmitter {
     );
     this._confirmChannel.on('close', () => this.emit('channel:close'));
   }
+
+  async close() {
+    await this._confirmChannel.close();
+    await this._connection.close();
+  }
 }
 
 module.exports = AmqpPlus;
