@@ -136,6 +136,10 @@ class AmqpPlus extends EventEmitter {
     return this.publish('', queue, content, options);
   }
 
+  bulkSendToQueue(queues, contents, options = {}) {
+    return this.bulkPublish('', queues, contents, options);
+  }
+
   publish(exchange, routingKey, content, options = {}) {
     let msg;
     const defaultOptions = options;
