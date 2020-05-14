@@ -2,68 +2,20 @@ const { EventEmitter } = require('events');
 const amqp = require('amqp-connection-manager');
 
 class AmqpPlus extends EventEmitter {
-  constructor({ urls, exchanges = [], queues = [], bindings = [] }) {
+  constructor(config) {
     super();
     if (AmqpPlus.instance) {
       return AmqpPlus.instance;
     }
     AmqpPlus.instance = this;
 
-    this._validateConfig(urls, exchanges, queues, bindings);
+    this._validateConfig(config);
 
-    const serverUrls = Array.isArray(urls) ? urls : [urls];
-    this._connection = amqp.connect(serverUrls);
-    this._emitConnectionEvents();
-
-    this._confirmChannel = this._connection.createChannel({
-      setup: (channel) => {
-        const exchangesSetup = exchanges.map((exchange) => {
-          if (!exchange.name || !exchange.type) {
-            throw new Error('Exchange must have name and type');
-          }
-
-          return channel.assertExchange(exchange.name, exchange.type, {
-            durable: exchange.durable || true,
-            autoDelete: exchange.autoDelete || false
-          });
-        });
-
-        const queuesSetup = queues.map((queue) => {
-          if (!queue.name) {
-            throw new Error('Queue must have a name');
-          }
-
-          return channel.assertQueue(queue.name, {
-            durable: queue.durable || true,
-            autoDelete: queue.autoDelete || false,
-            exclusive: queue.exclusive || false
-          });
-        });
-
-        const bindingsSetup = [];
-        bindings.forEach((binding) => {
-          const bindingKeys = Array.isArray(binding.keys)
-            ? binding.keys
-            : [binding.keys];
-
-          bindingKeys.forEach((bindingKey) => {
-            bindings.push(
-              channel.bindQueue(binding.queue, binding.exchange, bindingKey)
-            );
-          });
-        });
-
-        return Promise.all([
-          ...exchangesSetup,
-          ...queuesSetup,
-          ...bindingsSetup
-        ]);
-      }
-    });
-    this._emitChannelEvents();
+    this._config = config;
+    this._connect();
   }
 
-  _validateConfig(urls, exchanges, queues, bindings) {
+  _validateConfig({ urls, exchanges = [], queues = [], bindings = [] }) {
     if (!urls || (Array.isArray(urls) && urls.length === 0)) {
       throw new Error('Atleast one url is needed');
     }
@@ -117,6 +69,66 @@ class AmqpPlus extends EventEmitter {
     });
   }
 
+  _connect() {
+    if (this._connection && this._connection.isConnected()) {
+      return;
+    }
+
+    const serverUrls = Array.isArray(this._config.urls)
+      ? this._config.urls
+      : [this._config.urls];
+    this._connection = amqp.connect(serverUrls);
+    this._emitConnectionEvents();
+
+    const { exchanges, queues, bindings } = this._config;
+    this._confirmChannel = this._connection.createChannel({
+      setup: (channel) => {
+        const exchangesSetup = exchanges.map((exchange) => {
+          if (!exchange.name || !exchange.type) {
+            throw new Error('Exchange must have name and type');
+          }
+
+          return channel.assertExchange(exchange.name, exchange.type, {
+            durable: exchange.durable || true,
+            autoDelete: exchange.autoDelete || false
+          });
+        });
+
+        const queuesSetup = queues.map((queue) => {
+          if (!queue.name) {
+            throw new Error('Queue must have a name');
+          }
+
+          return channel.assertQueue(queue.name, {
+            durable: queue.durable || true,
+            autoDelete: queue.autoDelete || false,
+            exclusive: queue.exclusive || false
+          });
+        });
+
+        const bindingsSetup = [];
+        bindings.forEach((binding) => {
+          const bindingKeys = Array.isArray(binding.keys)
+            ? binding.keys
+            : [binding.keys];
+
+          bindingKeys.forEach((bindingKey) => {
+            bindingsSetup.push(
+              channel.bindQueue(binding.queue, binding.exchange, bindingKey)
+            );
+          });
+        });
+
+        return Promise.all([
+          ...exchangesSetup,
+          ...queuesSetup,
+          ...bindingsSetup
+        ]);
+      }
+    });
+    this._emitChannelEvents();
+  }
+
   _emitConnectionEvents() {
     this._connection.on('connect', ({ connection, url }) =>
       this.emit('connect', { connection, url })
@@ -130,6 +142,10 @@ class AmqpPlus extends EventEmitter {
       this.emit('channel:error', err, name)
     );
     this._confirmChannel.on('close', () => this.emit('channel:close'));
+  }
+
+  waitForConnect() {
+    return this._confirmChannel.waitForConnect();
   }
 
   sendToQueue(queue, content, options = {}) {
