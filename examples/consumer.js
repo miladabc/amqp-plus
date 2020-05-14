@@ -11,9 +11,7 @@ function consumer(msg) {
     msg.nack(); // Failed processing, requeue the msg
   }
 
-  if (msg.content === 'bad') {
-    msg.reject(); // Bad msg, dequeue the msg
-  }
+  msg.reject(); // Bad msg, dequeue the msg
 }
 
 rabbitClient.subscribe('q-1', consumer, { noAck: false });

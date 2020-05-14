@@ -26,7 +26,7 @@ For code snippets checkout [examples](./examples) folder.
 ```js
 const AmqpPlus = require('amqp-plus');
 
-const rabbitClient = new AmqpPlus({
+const amqpClient = new AmqpPlus({
   urls: [
     'amqp://guest:guest@firsthost:5672',
     'amqp://guest:guest@secondhost:5672'
@@ -72,23 +72,23 @@ const rabbitClient = new AmqpPlus({
 ### Events
 
 ```js
-rabbitClient.on('connect', () => {
+amqpClient.on('connect', () => {
   console.log('connected');
 });
 
-rabbitClient.on('disconnect', (err) => {
+amqpClient.on('disconnect', (err) => {
   console.error('disconnected', err);
 });
 
-rabbitClient.on('channel:connect', () => {
+amqpClient.on('channel:connect', () => {
   console.log('channel connected');
 });
 
-rabbitClient.on('channel:error', (error, name) => {
+amqpClient.on('channel:error', (error, name) => {
   console.error('channel error: ', error, name);
 });
 
-rabbitClient.on('channel:close', () => {
+amqpClient.on('channel:close', () => {
   console.log('channel closed');
 });
 ```
@@ -96,7 +96,7 @@ rabbitClient.on('channel:close', () => {
 ### Publish
 
 ```js
-rabbitClient.publish(
+amqpClient.publish(
   'ex-1',
   'key-1',
   { data: 'json msg' },
@@ -105,14 +105,14 @@ rabbitClient.publish(
 .then(() => console.log('Message delivered'))
 .catch((err) => console.error('Message rejected:', err));
 
-rabbitClient.publish('ex-2', '', 'string msg');
-rabbitClient.publish('ex-3', 'key.3', Buffer.from('buffer msg'));
+amqpClient.publish('ex-2', '', 'string msg');
+amqpClient.publish('ex-3', 'key.3', Buffer.from('buffer msg'));
 ```
 
 ### sendToQueue
 
 ```js
-rabbitClient.sendToQueue(
+amqpClient.sendToQueue(
   'q-1',
   { data: 'json msg' },
   { persistent: false }
@@ -124,19 +124,19 @@ rabbitClient.sendToQueue(
 ### bulkPublish
 
 ```js
-rabbitClient.bulkPublish(
+amqpClient.bulkPublish(
   'ex-2',
   'routing-key-is-ignored-for-fanout-exchange',
   [
     { msg: 'json msg' },
     'string msg',
     Buffer.from('buffer msg')
- ]
+  ]
 )
 .then(() => console.log('All messages delivered'))
 .catch((err) => console.error('Atleast one of the messages rejected', err));
 
-rabbitClient.bulkPublish(
+amqpClient.bulkPublish(
   'ex-1',
   'key-2', // All messages get sent with routing key "key-2"
   [
@@ -146,7 +146,7 @@ rabbitClient.bulkPublish(
   ]
 );
 
-rabbitClient.bulkPublish(
+amqpClient.bulkPublish(
   'ex-3',
   ['key.1', 'key.2', 'key.3'],
   [
@@ -160,7 +160,7 @@ rabbitClient.bulkPublish(
 ### bulkSendToQueue
 
 ```js
-rabbitClient.bulkSendToQueue(
+amqpClient.bulkSendToQueue(
   'q-3', 
   [
     { msg: 'json msg' },
@@ -171,7 +171,7 @@ rabbitClient.bulkSendToQueue(
 .then(() => console.log('All messages delivered'))
 .catch((err) => console.error('Atleast one of the messages rejected', err));
 
-rabbitClient.bulkSendToQueue(
+amqpClient.bulkSendToQueue(
   ['q-1', 'q-2', 'q-3'],
   [
     { msg: 'msg goes to queue "q-1"' },
@@ -200,5 +200,5 @@ function consumer(msg) {
   }
 }
 
-rabbitClient.subscribe('q-1', consumer, { noAck: false });
+amqpClient.subscribe('q-1', consumer, { noAck: false });
 ```
